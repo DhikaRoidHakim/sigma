@@ -37,12 +37,20 @@ Build SIGMA, an enterprise Asset Location Tracking application: track current as
 - Seed: 3 offices, 10 rooms, 10 assets, 5 movement logs
 - Testing: 27/27 backend pytest pass, full UI flows verified (iteration_1)
 
+## Implemented (Iteration 2) ✅
+- Riwayat Perbaikan per aset: CRUD (tanggal, deskripsi kerusakan, tindakan, biaya, teknisi/vendor, status Dalam Perbaikan/Selesai), section di detail aset, badge "Dalam Perbaikan" di header & dashboard, in_repair/total_repairs di API
+- Field inventaris baru: jenis_inventaris, golongan (Golongan 1–5), tanggal_pembelian, nilai_pembelian (format Rp), status (Lunas/Penyusutan) — di form aset, kartu info, kolom Status dashboard
+- Export riwayat perpindahan & riwayat perbaikan ke CSV/PDF (reportlab, branded SIGMA)
+- Import/Export inventaris: export CSV/XLSX semua aset; import CSV/XLSX dengan skip duplikat kode_aset + laporan hasil (imported/skipped/errors), lokasi dicocokkan via nama kantor/ruangan
+- Endpoint baru: /assets/export, /assets/import, /assets/{id}/repairs (CRUD), /assets/{id}/history/export, /assets/{id}/repairs/export
+- Testing: 50/50 backend pytest pass (23 baru + 27 regresi), semua flow UI terverifikasi (iteration_2)
+
 ## Credentials
 admin@sigma.co.id / Sigma@2026 (see /app/memory/test_credentials.md)
 
 ## Backlog
 - P1: User management page (register is API-only), role-based permissions (admin vs user)
-- P1: Export history to CSV/PDF
 - P2: Brute-force login lockout, password reset flow
 - P2: QR-code asset labels for scanning
 - P2: Global activity feed (all assets' recent moves) on dashboard
+- P2: Laporan penyusutan otomatis (depresiasi per golongan)
