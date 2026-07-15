@@ -1,0 +1,88 @@
+{
+  "theme": "light",
+  "brand": "SIGMA",
+  "app_type": "Enterprise Asset Management Dashboard (SaaS)",
+  "typography": {
+    "primary_font": "Geist Sans",
+    "secondary_font": "Geist Mono",
+    "instructions": "Use Geist for primary UI. If Geist is not available, default to Inter as requested by user. Use mono fonts for asset codes, dates, and technical details to add a premium technical feel.",
+    "sizes": {
+      "page_title": "text-3xl font-semibold tracking-tight",
+      "section_title": "text-2xl font-medium tracking-tight",
+      "card_title": "text-lg font-medium",
+      "body": "text-base",
+      "caption": "text-xs font-medium tracking-wider"
+    }
+  },
+  "colors": {
+    "mandatory_palette": {
+      "primary": "#01567A",
+      "secondary": "#92BA3C",
+      "background": "#F8FAFC",
+      "card": "#FFFFFF",
+      "border": "#E5E7EB",
+      "text": "#1F2937",
+      "text_secondary": "#6B7280",
+      "danger": "#DC2626",
+      "warning": "#F59E0B",
+      "info": "#0284C7"
+    },
+    "instructions": "Strictly follow the user's mandatory palette. Set these exact HEX codes as CSS variables in index.css. Do NOT use gradients of primary/secondary colors. Use secondary (#92BA3C) strictly for active states, 'POSISI SEKARANG' badges, and success accents. Use Primary (#01567A) for branding, sidebar, and primary CTA buttons."
+  },
+  "layouts": {
+    "general": "Light gray background (#F8FAFC), container max-width, generous whitespace (p-6, p-8), tidy grid system.",
+    "cards": "Cards must have a white background, soft ambient shadow (`shadow-[0_2px_8px_rgba(0,0,0,0.04)]`), rounded-xl radius, and thin borders (#E5E7EB).",
+    "timeline_page": "Grid layout on Asset Detail: Left column (Asset Info, Current Location, Move Form) taking 4 spans or 1/3 width, Right column (Timeline History) taking 8 spans or 2/3 width. Timeline is the absolute focus."
+  },
+  "components": {
+    "timeline": {
+      "style": "GitHub Activity / Jira History style.",
+      "implementation": "Custom Tailwind component. Vertical left border line. Circle nodes overlapping the line. Use a secondary color (#92BA3C) filled circle for the most recent/current node. Cards extending from nodes. Date on top of card or left inline. 'POSISI SEKARANG' (Current Position) badge on the latest node.",
+      "instructions_to_main_agent": "Do NOT use a generic library. Build a custom Framer Motion enabled vertical timeline component with Tailwind. Use a relative container with a vertical absolute line (`bg-[#E5E7EB]`). Overlay circular nodes on the line. The current active node should have #92BA3C."
+    },
+    "data_table": {
+      "style": "Linear / Vercel style.",
+      "implementation": "Shadcn UI table. Clean, thin horizontal borders only. No vertical borders. Generous padding (`py-3`). Highlight row on hover (`hover:bg-gray-50`). Sticky header if possible. Add pagination at the bottom."
+    },
+    "buttons": {
+      "style": "Modern enterprise.",
+      "implementation": "Pill-shaped or slightly rounded (`rounded-md` or `rounded-lg`). Primary buttons use #01567A background, white text. Secondary use white background, #E5E7EB border, #1F2937 text. Include Lucide icons in buttons."
+    },
+    "forms": {
+      "style": "Clean SaaS.",
+      "implementation": "Labels with `text-sm font-medium`. Inputs with `border-[#E5E7EB]`, `focus:ring-2 focus:ring-[#01567A]/20 focus:border-[#01567A]`. Use Shadcn Select with search capabilities for office/room movement."
+    }
+  },
+  "motion": {
+    "rules": "Use Framer Motion. Page transitions: fade in and slide up slightly (`initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}`). Staggered children for lists/timeline nodes. Micro-interactions on buttons/hover states.",
+    "skeletons": "Use subtle pulsing skeletons matching the layout for loading states. Color: `bg-gray-200 animate-pulse rounded-md`."
+  },
+  "accessibility": {
+    "contrast": "Ensure contrast compliance. White text on Primary (#01567A) works well.",
+    "testing": "All interactive elements MUST include `data-testid` (e.g., `data-testid=\"move-asset-submit-button\"`)."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "instructions": "Use Lucide icons at 16px to 20px size. Keep stroke width consistent (1.5 or 2)."
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Do NOT use HTML-based components for advanced user interactions. Use Shadcn components for Selects, Dialogs, etc.",
+    "Never use generic centered layouts. Use grid, bento box styles, or structured columns.",
+    "Do not apply `transition: all`. Target specific properties.",
+    "All toasts must use the `sonner` package.",
+    "Asset Detail Timeline must be heavily stylized as GitHub/Linear style. Do NOT just output a basic bulleted list.",
+    "Inject framer-motion into Shadcn cards and standard layout divs to give a premium feel."
+  ],
+  "instructions_to_main_agent": [
+    "1. Update `/app/frontend/src/index.css` to map the user's exact HEX codes to Tailwind variables.",
+    "2. Ensure `lucide-react`, `framer-motion`, `sonner`, and relevant Shadcn components are installed and integrated.",
+    "3. Build Sidebar Navigation for Dashboard, Assets, Offices, and Rooms.",
+    "4. Build the Dashboard page with a data table containing search, filters, and pagination.",
+    "5. Build the Asset Detail page with breadcrumbs, Info Card, Location Card, Move Asset Form (using Selects and Confirmation Dialog), and the main GitHub-style Timeline.",
+    "6. Build CRUD interfaces (tables/forms) for Offices and Rooms.",
+    "7. Apply Framer Motion fade-ins to major layout components and stagger timeline children.",
+    "8. Add empty states and loading skeletons.",
+    "9. Add 'POSISI SEKARANG' badge on the latest timeline event using Secondary color."
+  ]
+}
