@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Package, Building2, DoorOpen, History, Search, Plus, Pencil, Trash2, MapPin, ArrowRight } from "lucide-react";
+import { Package, Building2, DoorOpen, History, Search, Plus, Pencil, Trash2, MapPin, ArrowRight, Upload, Download, Wrench, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import api, { formatApiError } from "@/services/api";
+import api, { formatApiError, downloadFile } from "@/services/api";
 import { locationLabel, formatDateTime } from "@/lib/format";
 import { SearchableSelect } from "@/components/common/SearchableSelect";
 import { PaginationBar } from "@/components/common/PaginationBar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { AssetFormDialog } from "@/features/assets/AssetFormDialog";
+import { ImportDialog } from "@/features/assets/ImportDialog";
 
 const statCards = [
   { key: "total_assets", label: "Total Aset", icon: Package },
@@ -37,6 +39,20 @@ export default function DashboardPage() {
   const [editAsset, setEditAsset] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportAssets = async (format) => {
+    setExporting(true);
+    try {
+      await downloadFile("/assets/export", { format });
+      toast.success(`Data inventaris diekspor (${format.toUpperCase()})`);
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchAssets = useCallback(async () => {
     setLoading(true);
@@ -93,13 +109,35 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-[#1F2937]">Dashboard Aset</h1>
           <p className="text-[#6B7280] mt-1.5 text-sm">Pantau posisi seluruh aset dan riwayat perpindahannya.</p>
         </div>
-        <Button
-          data-testid="add-asset-button"
-          onClick={() => { setEditAsset(null); setFormOpen(true); }}
-          className="bg-[#01567A] hover:bg-[#014462] text-white gap-2"
-        >
-          <Plus size={16} /> Tambah Aset
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            data-testid="import-assets-button"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 border-[#E5E7EB]"
+          >
+            <Upload size={16} /> Import
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={exporting} data-testid="export-assets-button" className="gap-2 border-[#E5E7EB]">
+                {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem data-testid="export-assets-csv" onClick={() => handleExportAssets("csv")}>Export CSV</DropdownMenuItem>
+              <DropdownMenuItem data-testid="export-assets-xlsx" onClick={() => handleExportAssets("xlsx")}>Export Excel (.xlsx)</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            data-testid="add-asset-button"
+            onClick={() => { setEditAsset(null); setFormOpen(true); }}
+            className="bg-[#01567A] hover:bg-[#014462] text-white gap-2"
+          >
+            <Plus size={16} /> Tambah Aset
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
@@ -166,6 +204,7 @@ export default function DashboardPage() {
                   <TableHead className="text-xs uppercase tracking-wider">Kode</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Nama Aset</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Lokasi Saat Ini</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider hidden md:table-cell">Terakhir Dipindah</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-center">Mutasi</TableHead>
                   <TableHead className="text-right text-xs uppercase tracking-wider">Aksi</TableHead>
@@ -192,6 +231,22 @@ export default function DashboardPage() {
                           Belum ditempatkan
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {asset.status === "Lunas" && (
+                          <Badge className="bg-[#92BA3C]/10 text-[#5a7822] hover:bg-[#92BA3C]/10 border border-[#92BA3C]/30">Lunas</Badge>
+                        )}
+                        {asset.status === "Penyusutan" && (
+                          <Badge className="bg-[#F59E0B]/10 text-[#B45309] hover:bg-[#F59E0B]/10 border border-[#F59E0B]/30">Penyusutan</Badge>
+                        )}
+                        {asset.in_repair && (
+                          <Badge className="bg-[#DC2626]/10 text-[#B91C1C] hover:bg-[#DC2626]/10 border border-[#DC2626]/30 gap-1">
+                            <Wrench size={10} /> Perbaikan
+                          </Badge>
+                        )}
+                        {!asset.status && !asset.in_repair && <span className="text-sm text-[#6B7280]">-</span>}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-[#6B7280]">
                       {asset.last_moved_at ? formatDateTime(asset.last_moved_at) : "-"}
@@ -243,6 +298,7 @@ export default function DashboardPage() {
       </div>
 
       <AssetFormDialog open={formOpen} onOpenChange={setFormOpen} asset={editAsset} offices={offices} onSaved={refreshAll} />
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshAll} />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(v) => !v && setDeleteTarget(null)}

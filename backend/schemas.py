@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 
 class RegisterIn(BaseModel):
@@ -51,6 +51,11 @@ class RoomOut(BaseModel):
 class AssetIn(BaseModel):
     kode_aset: str = Field(min_length=2, max_length=50)
     nama_aset: str = Field(min_length=2, max_length=150)
+    jenis_inventaris: Optional[str] = Field(default=None, max_length=100)
+    golongan: Optional[str] = Field(default=None, max_length=50)
+    tanggal_pembelian: Optional[str] = None
+    nilai_pembelian: Optional[float] = Field(default=None, ge=0)
+    status: Optional[Literal["Lunas", "Penyusutan"]] = None
     office_id: Optional[str] = None
     room_id: Optional[str] = None
 
@@ -59,6 +64,11 @@ class AssetOut(BaseModel):
     id: str
     kode_aset: str
     nama_aset: str
+    jenis_inventaris: Optional[str] = None
+    golongan: Optional[str] = None
+    tanggal_pembelian: Optional[str] = None
+    nilai_pembelian: Optional[float] = None
+    status: Optional[str] = None
     current_office_id: Optional[str] = None
     current_room_id: Optional[str] = None
     current_office_name: Optional[str] = None
@@ -89,6 +99,28 @@ class AssetLogOut(BaseModel):
     moved_by: str
     notes: Optional[str] = None
     moved_at: str
+
+
+class RepairIn(BaseModel):
+    tanggal_perbaikan: str
+    deskripsi_kerusakan: str = Field(min_length=3, max_length=500)
+    tindakan_perbaikan: Optional[str] = Field(default=None, max_length=500)
+    biaya: Optional[float] = Field(default=None, ge=0)
+    teknisi: Optional[str] = Field(default=None, max_length=150)
+    status: Literal["Dalam Perbaikan", "Selesai"]
+
+
+class RepairOut(BaseModel):
+    id: str
+    asset_id: str
+    tanggal_perbaikan: str
+    deskripsi_kerusakan: str
+    tindakan_perbaikan: Optional[str] = None
+    biaya: Optional[float] = None
+    teknisi: Optional[str] = None
+    status: str
+    created_by: str
+    created_at: str
 
 
 class Paginated(BaseModel):

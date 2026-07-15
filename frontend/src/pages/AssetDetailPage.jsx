@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Package, Building2, MapPin, Calendar, Clock, History, ChevronRight, FilterX } from "lucide-react";
+import { Package, Building2, MapPin, Calendar, Clock, History, ChevronRight, FilterX, Tag, Layers, Banknote, Wrench, Download, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import api, { formatApiError } from "@/services/api";
-import { formatDate, formatDateTime, locationLabel } from "@/lib/format";
+import api, { formatApiError, downloadFile } from "@/services/api";
+import { formatDate, formatDateTime, formatCurrency, locationLabel } from "@/lib/format";
 import { SearchableSelect } from "@/components/common/SearchableSelect";
 import { PaginationBar } from "@/components/common/PaginationBar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MoveAssetForm } from "@/features/assets/MoveAssetForm";
 import { HistoryTimeline } from "@/features/assets/HistoryTimeline";
+import { RepairSection } from "@/features/assets/RepairSection";
 
 const InfoRow = ({ icon: Icon, label, value, mono = false }) => (
   <div className="flex items-start gap-3 py-2.5">
@@ -36,8 +38,21 @@ export default function AssetDetailPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [officeFilter, setOfficeFilter] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const hasFilters = Boolean(dateFrom || dateTo || officeFilter);
+
+  const handleExportHistory = async (format) => {
+    setExporting(true);
+    try {
+      await downloadFile(`/assets/${id}/history/export`, { format });
+      toast.success(`Riwayat perpindahan diekspor (${format.toUpperCase()})`);
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchAsset = useCallback(() => {
     api
@@ -129,6 +144,11 @@ export default function AssetDetailPage() {
               Belum ditempatkan
             </Badge>
           )}
+          {asset.in_repair && (
+            <Badge data-testid="in-repair-badge" className="bg-[#DC2626]/10 text-[#B91C1C] hover:bg-[#DC2626]/10 border border-[#DC2626]/30 gap-1">
+              <Wrench size={11} /> Dalam Perbaikan
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -139,6 +159,27 @@ export default function AssetDetailPage() {
             <div className="divide-y divide-[#E5E7EB]">
               <InfoRow icon={Package} label="Nama Asset" value={asset.nama_aset} />
               <InfoRow icon={History} label="Kode Asset" value={asset.kode_aset} mono />
+              <InfoRow icon={Tag} label="Jenis Inventaris" value={asset.jenis_inventaris || "-"} />
+              <InfoRow icon={Layers} label="Golongan" value={asset.golongan || "-"} />
+              <InfoRow icon={Calendar} label="Tanggal Pembelian" value={asset.tanggal_pembelian ? formatDate(asset.tanggal_pembelian) : "-"} />
+              <InfoRow icon={Banknote} label="Nilai Pembelian" value={formatCurrency(asset.nilai_pembelian)} mono />
+              <div className="flex items-start gap-3 py-2.5">
+                <Tag size={16} strokeWidth={1.75} className="text-[#6B7280] mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs text-[#6B7280]">Status</p>
+                  <div className="mt-1">
+                    {asset.status ? (
+                      asset.status === "Lunas" ? (
+                        <Badge className="bg-[#92BA3C]/10 text-[#5a7822] hover:bg-[#92BA3C]/10 border border-[#92BA3C]/30">Lunas</Badge>
+                      ) : (
+                        <Badge className="bg-[#F59E0B]/10 text-[#B45309] hover:bg-[#F59E0B]/10 border border-[#F59E0B]/30">Penyusutan</Badge>
+                      )
+                    ) : (
+                      <span className="text-sm font-medium text-[#1F2937]">-</span>
+                    )}
+                  </div>
+                </div>
+              </div>
               <InfoRow icon={Calendar} label="Tanggal Dibuat" value={formatDate(asset.created_at)} />
               <InfoRow
                 icon={Clock}
@@ -170,11 +211,25 @@ export default function AssetDetailPage() {
                   </div>
                   <h2 className="text-2xl font-medium tracking-tight text-[#1F2937]">Riwayat Perpindahan</h2>
                 </div>
-                {hasFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="clear-history-filters" className="text-[#6B7280] gap-1.5">
-                    <FilterX size={14} /> Reset filter
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={exporting || !history?.total} data-testid="history-export-button" className="gap-1.5 border-[#E5E7EB]">
+                        {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                        Export
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem data-testid="history-export-csv" onClick={() => handleExportHistory("csv")}>Export CSV</DropdownMenuItem>
+                      <DropdownMenuItem data-testid="history-export-pdf" onClick={() => handleExportHistory("pdf")}>Export PDF</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {hasFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="clear-history-filters" className="text-[#6B7280] gap-1.5">
+                      <FilterX size={14} /> Reset filter
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="grid sm:grid-cols-3 gap-3">
                 <div>
@@ -218,6 +273,8 @@ export default function AssetDetailPage() {
           </div>
         </div>
       </div>
+
+      <RepairSection assetId={id} onChanged={fetchAsset} />
     </motion.div>
   );
 }

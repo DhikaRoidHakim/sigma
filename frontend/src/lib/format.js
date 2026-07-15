@@ -18,6 +18,15 @@ export function formatDateTime(iso) {
   });
 }
 
+export function formatCurrency(value) {
+  if (value == null || value === "") return "-";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export function locationLabel(officeName, roomName) {
   if (!officeName && !roomName) return "Belum ditempatkan";
   if (officeName && roomName) return `${officeName} · ${roomName}`;

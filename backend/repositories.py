@@ -87,8 +87,16 @@ class AssetLogRepository(BaseRepository):
         await self.col.delete_many({"asset_id": asset_id})
 
 
+class AssetRepairRepository(BaseRepository):
+    collection_name = "asset_repairs"
+
+    async def delete_by_asset(self, asset_id: str):
+        await self.col.delete_many({"asset_id": asset_id})
+
+
 user_repo = UserRepository()
 office_repo = OfficeRepository()
 room_repo = RoomRepository()
 asset_repo = AssetRepository()
 asset_log_repo = AssetLogRepository()
+asset_repair_repo = AssetRepairRepository()
