@@ -11,97 +11,96 @@
 name: sigma
 
 services:
+    # ---------- MongoDB ----------
+    mongo:
+        image: mongo:7
+        container_name: sigma-mongo
+        restart: unless-stopped
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-sigma}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-sigma_secret}
+            MONGO_INITDB_DATABASE: ${DB_NAME:-sigma}
+        volumes:
+            - mongo_data:/data/db
+            - mongo_config:/data/configdb
+        ports:
+            - '${MONGO_PORT:-27018}:27017'
+        healthcheck:
+            test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+            interval: 15s
+            timeout: 5s
+            retries: 10
+            start_period: 20s
+        networks:
+            - sigma-net
 
-  # ---------- MongoDB ----------
-  mongo:
-    image: mongo:7
-    container_name: sigma-mongo
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-sigma}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-sigma_secret}
-      MONGO_INITDB_DATABASE: ${DB_NAME:-sigma}
-    volumes:
-      - mongo_data:/data/db
-      - mongo_config:/data/configdb
-    ports:
-      - "${MONGO_PORT:-27017}:27017"
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-    networks:
-      - sigma-net
+    # ---------- Backend (FastAPI) ----------
+    backend:
+        build:
+            context: ./backend
+            dockerfile: Dockerfile
+        image: sigma-backend:latest
+        container_name: sigma-backend
+        restart: unless-stopped
+        depends_on:
+            mongo:
+                condition: service_healthy
+        environment:
+            MONGO_URL: ${MONGO_URL:-mongodb://sigma:sigma_secret@mongo:27017/?authSource=admin}
+            DB_NAME: ${DB_NAME:-sigma}
+            CORS_ORIGINS: ${CORS_ORIGINS:-*}
+            JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+            ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sigma.co.id}
+            ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Sigma@2026}
+            FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8081}
+        expose:
+            - '8001'
+        ports:
+            # Optional — expose backend directly for debugging.
+            # Comment out in production and access only via nginx.
+            - '${BACKEND_PORT:-8003}:8001'
+        healthcheck:
+            test: ['CMD', 'curl', '-fsS', 'http://localhost:8003/api/']
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 25s
+        networks:
+            - sigma-net
 
-  # ---------- Backend (FastAPI) ----------
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: sigma-backend:latest
-    container_name: sigma-backend
-    restart: unless-stopped
-    depends_on:
-      mongo:
-        condition: service_healthy
-    environment:
-      MONGO_URL: ${MONGO_URL:-mongodb://sigma:sigma_secret@mongo:27017/?authSource=admin}
-      DB_NAME: ${DB_NAME:-sigma}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:3000}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sigma.co.id}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Sigma@2026}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
-    expose:
-      - "8001"
-    ports:
-      # Optional — expose backend directly for debugging.
-      # Comment out in production and access only via nginx.
-      - "${BACKEND_PORT:-8001}:8001"
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/api/"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 25s
-    networks:
-      - sigma-net
-
-  # ---------- Frontend (React served by Nginx) ----------
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        # Empty string ⇒ frontend calls `/api/...` on same origin
-        # and nginx reverse-proxies to the backend service.
-        REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL:-}
-    image: sigma-frontend:latest
-    container_name: sigma-frontend
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_started
-    ports:
-      - "${FRONTEND_PORT:-8080}:80"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - sigma-net
+    # ---------- Frontend (React served by Nginx) ----------
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+            args:
+                # Empty string ⇒ frontend calls `/api/...` on same origin
+                # and nginx reverse-proxies to the backend service.
+                REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL:-}
+        image: sigma-frontend:latest
+        container_name: sigma-frontend
+        restart: unless-stopped
+        depends_on:
+            backend:
+                condition: service_started
+        ports:
+            - '${FRONTEND_PORT:-8091}:80'
+        healthcheck:
+            test: ['CMD', 'wget', '-qO-', 'http://localhost/']
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        networks:
+            - sigma-net
 
 # ---------- Volumes & Networks ----------
 volumes:
-  mongo_data:
-    driver: local
-  mongo_config:
-    driver: local
+    mongo_data:
+        driver: local
+    mongo_config:
+        driver: local
 
 networks:
-  sigma-net:
-    driver: bridge
+    sigma-net:
+        driver: bridge
