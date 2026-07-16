@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { MoveAssetForm } from "@/features/assets/MoveAssetForm";
 import { HistoryTimeline } from "@/features/assets/HistoryTimeline";
 import { RepairSection } from "@/features/assets/RepairSection";
+import { useAuth } from "@/context/AuthContext";
 
 const InfoRow = ({ icon: Icon, label, value, mono = false }) => (
   <div className="flex items-start gap-3 py-2.5">
@@ -29,6 +30,7 @@ const InfoRow = ({ icon: Icon, label, value, mono = false }) => (
 
 export default function AssetDetailPage() {
   const { id } = useParams();
+  const { hasPerm } = useAuth();
   const [asset, setAsset] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [offices, setOffices] = useState([]);
@@ -198,7 +200,7 @@ export default function AssetDetailPage() {
             </div>
           </div>
 
-          <MoveAssetForm asset={asset} offices={offices} onMoved={handleMoved} />
+          {hasPerm("assets.move") && <MoveAssetForm asset={asset} offices={offices} onMoved={handleMoved} />}
         </div>
 
         <div className="lg:col-span-7 xl:col-span-8">

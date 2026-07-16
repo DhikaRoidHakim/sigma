@@ -17,7 +17,47 @@ class UserOut(BaseModel):
     id: str
     name: str
     email: str
-    role: str = "user"
+    role_id: Optional[str] = None
+    role_name: Optional[str] = None
+    permissions: List[str] = []
+    is_active: bool = True
+
+
+class RoleIn(BaseModel):
+    name: str = Field(min_length=2, max_length=50)
+    description: Optional[str] = Field(default=None, max_length=200)
+    permissions: List[str] = []
+
+
+class RoleOut(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    permissions: List[str] = []
+    is_system: bool = False
+    jumlah_user: int = 0
+    created_at: str
+    updated_at: str
+
+
+class UserCreateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=100)
+    role_id: str
+
+
+class UserUpdateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    role_id: str
+
+
+class PasswordResetIn(BaseModel):
+    password: str = Field(min_length=6, max_length=100)
+
+
+class UserStatusIn(BaseModel):
+    is_active: bool
 
 
 class OfficeIn(BaseModel):

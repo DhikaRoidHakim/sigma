@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PaginationBar } from "@/components/common/PaginationBar";
 import { SearchableSelect } from "@/components/common/SearchableSelect";
+import { useAuth } from "@/context/AuthContext";
 
 const REPAIR_STATUS = [
   { value: "Dalam Perbaikan", label: "Dalam Perbaikan" },
@@ -30,6 +31,8 @@ const RepairStatusBadge = ({ status }) =>
   );
 
 export const RepairSection = ({ assetId, onChanged }) => {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm("repairs.manage");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -148,7 +151,8 @@ export const RepairSection = ({ assetId, onChanged }) => {
               <DropdownMenuItem data-testid="repair-export-pdf" onClick={() => handleExport("pdf")}>Export PDF</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" data-testid="add-repair-button" onClick={() => openForm()} className="bg-[#01567A] hover:bg-[#014462] text-white gap-1.5">
+          <Button size="sm" data-testid="add-repair-button" onClick={() => openForm()} disabled={!canManage}
+            className={`bg-[#01567A] hover:bg-[#014462] text-white gap-1.5 ${!canManage ? "hidden" : ""}`}>
             <Plus size={14} /> Tambah Perbaikan
           </Button>
         </div>
@@ -185,16 +189,18 @@ export const RepairSection = ({ assetId, onChanged }) => {
                   <TableCell className="hidden md:table-cell text-sm text-[#6B7280]">{r.teknisi || "-"}</TableCell>
                   <TableCell><RepairStatusBadge status={r.status} /></TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" aria-label="Edit perbaikan" data-testid={`repair-edit-${r.id}`}
-                        onClick={() => openForm(r)} className="h-8 w-8 text-[#6B7280] hover:text-[#01567A]">
-                        <Pencil size={15} />
-                      </Button>
-                      <Button variant="ghost" size="icon" aria-label="Hapus perbaikan" data-testid={`repair-delete-${r.id}`}
-                        onClick={() => setDeleteTarget(r)} className="h-8 w-8 text-[#6B7280] hover:text-[#DC2626]">
-                        <Trash2 size={15} />
-                      </Button>
-                    </div>
+                    {canManage && (
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" aria-label="Edit perbaikan" data-testid={`repair-edit-${r.id}`}
+                          onClick={() => openForm(r)} className="h-8 w-8 text-[#6B7280] hover:text-[#01567A]">
+                          <Pencil size={15} />
+                        </Button>
+                        <Button variant="ghost" size="icon" aria-label="Hapus perbaikan" data-testid={`repair-delete-${r.id}`}
+                          onClick={() => setDeleteTarget(r)} className="h-8 w-8 text-[#6B7280] hover:text-[#DC2626]">
+                          <Trash2 size={15} />
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

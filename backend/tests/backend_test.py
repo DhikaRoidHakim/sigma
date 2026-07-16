@@ -46,7 +46,10 @@ class TestAuth:
         assert r.status_code == 200
         data = r.json()
         assert data["email"] == ADMIN_EMAIL
-        assert data["role"] == "admin"
+        assert data["role_name"] == "Administrator"
+        assert isinstance(data.get("permissions", []), list)
+        assert "assets.view" in data["permissions"]
+        assert data.get("is_active") is True
         assert "access_token" in s.cookies
 
     def test_login_wrong_password(self):

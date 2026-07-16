@@ -27,8 +27,13 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const hasPerm = useCallback(
+    (...perms) => Array.isArray(user?.permissions) && perms.some((p) => user.permissions.includes(p)),
+    [user]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, hasPerm }}>
       {children}
     </AuthContext.Provider>
   );

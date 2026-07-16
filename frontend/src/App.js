@@ -9,6 +9,8 @@ import DashboardPage from "@/pages/DashboardPage";
 import AssetDetailPage from "@/pages/AssetDetailPage";
 import OfficesPage from "@/pages/OfficesPage";
 import RoomsPage from "@/pages/RoomsPage";
+import UsersPage from "@/pages/UsersPage";
+import RolesPage from "@/pages/RolesPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
@@ -20,6 +22,12 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   if (user === false) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const PermissionRoute = ({ perm, children }) => {
+  const { hasPerm } = useAuth();
+  if (!hasPerm(perm)) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -40,6 +48,8 @@ function App() {
             <Route path="/assets/:id" element={<AssetDetailPage />} />
             <Route path="/offices" element={<OfficesPage />} />
             <Route path="/rooms" element={<RoomsPage />} />
+            <Route path="/users" element={<PermissionRoute perm="users.manage"><UsersPage /></PermissionRoute>} />
+            <Route path="/roles" element={<PermissionRoute perm="roles.manage"><RolesPage /></PermissionRoute>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

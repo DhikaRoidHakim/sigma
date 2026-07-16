@@ -54,6 +54,13 @@ class OfficeRepository(BaseRepository):
     collection_name = "offices"
 
 
+class RoleRepository(BaseRepository):
+    collection_name = "roles"
+
+    async def find_by_name(self, name: str):
+        return await self.col.find_one({"name": name})
+
+
 class RoomRepository(BaseRepository):
     collection_name = "rooms"
 
@@ -96,6 +103,7 @@ class AssetRepairRepository(BaseRepository):
 
 user_repo = UserRepository()
 office_repo = OfficeRepository()
+role_repo = RoleRepository()
 room_repo = RoomRepository()
 asset_repo = AssetRepository()
 asset_log_repo = AssetLogRepository()

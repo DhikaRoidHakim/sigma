@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Building2, DoorOpen, LogOut, Menu, X, Hexagon } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, LogOut, Menu, X, Hexagon, Users, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
-  { to: "/", label: "Dashboard Aset", icon: LayoutDashboard },
-  { to: "/offices", label: "Kantor", icon: Building2 },
-  { to: "/rooms", label: "Ruangan", icon: DoorOpen },
+  { to: "/", label: "Dashboard Aset", icon: LayoutDashboard, perms: ["assets.view"] },
+  { to: "/offices", label: "Kantor", icon: Building2, perms: ["assets.view"] },
+  { to: "/rooms", label: "Ruangan", icon: DoorOpen, perms: ["assets.view"] },
+  { to: "/users", label: "Manajemen User", icon: Users, perms: ["users.manage"] },
+  { to: "/roles", label: "Role & Izin", icon: ShieldCheck, perms: ["roles.manage"] },
 ];
 
 export const AppLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPerm } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -30,7 +32,7 @@ export const AppLayout = () => {
         </div>
       </div>
       <nav className="flex-1 px-3 py-6 space-y-1" aria-label="Navigasi utama">
-        {navItems.map(({ to, label, icon: Icon }) => (
+        {navItems.filter(({ perms }) => hasPerm(...perms)).map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -57,7 +59,7 @@ export const AppLayout = () => {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-white text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-white/50 text-xs truncate">{user?.email}</p>
+            <p className="text-white/50 text-xs truncate">{user?.role_name || user?.email}</p>
           </div>
         </div>
         <Button

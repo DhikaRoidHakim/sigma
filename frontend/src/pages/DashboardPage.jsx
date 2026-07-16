@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { AssetFormDialog } from "@/features/assets/AssetFormDialog";
 import { ImportDialog } from "@/features/assets/ImportDialog";
+import { useAuth } from "@/context/AuthContext";
 
 const statCards = [
   { key: "total_assets", label: "Total Aset", icon: Package },
@@ -27,6 +28,7 @@ const statCards = [
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { hasPerm } = useAuth();
   const [stats, setStats] = useState(null);
   const [offices, setOffices] = useState([]);
   const [data, setData] = useState(null);
@@ -110,33 +112,39 @@ export default function DashboardPage() {
           <p className="text-[#6B7280] mt-1.5 text-sm">Pantau posisi seluruh aset dan riwayat perpindahannya.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            data-testid="import-assets-button"
-            onClick={() => setImportOpen(true)}
-            className="gap-2 border-[#E5E7EB]"
-          >
-            <Upload size={16} /> Import
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={exporting} data-testid="export-assets-button" className="gap-2 border-[#E5E7EB]">
-                {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                Export
+          {hasPerm("assets.import_export") && (
+            <>
+              <Button
+                variant="outline"
+                data-testid="import-assets-button"
+                onClick={() => setImportOpen(true)}
+                className="gap-2 border-[#E5E7EB]"
+              >
+                <Upload size={16} /> Import
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem data-testid="export-assets-csv" onClick={() => handleExportAssets("csv")}>Export CSV</DropdownMenuItem>
-              <DropdownMenuItem data-testid="export-assets-xlsx" onClick={() => handleExportAssets("xlsx")}>Export Excel (.xlsx)</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            data-testid="add-asset-button"
-            onClick={() => { setEditAsset(null); setFormOpen(true); }}
-            className="bg-[#01567A] hover:bg-[#014462] text-white gap-2"
-          >
-            <Plus size={16} /> Tambah Aset
-          </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" disabled={exporting} data-testid="export-assets-button" className="gap-2 border-[#E5E7EB]">
+                    {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem data-testid="export-assets-csv" onClick={() => handleExportAssets("csv")}>Export CSV</DropdownMenuItem>
+                  <DropdownMenuItem data-testid="export-assets-xlsx" onClick={() => handleExportAssets("xlsx")}>Export Excel (.xlsx)</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          {hasPerm("assets.manage") && (
+            <Button
+              data-testid="add-asset-button"
+              onClick={() => { setEditAsset(null); setFormOpen(true); }}
+              className="bg-[#01567A] hover:bg-[#014462] text-white gap-2"
+            >
+              <Plus size={16} /> Tambah Aset
+            </Button>
+          )}
         </div>
       </div>
 
@@ -266,22 +274,26 @@ export default function DashboardPage() {
                         >
                           <ArrowRight size={15} />
                         </Button>
-                        <Button
-                          variant="ghost" size="icon" aria-label="Edit aset"
-                          data-testid={`asset-edit-${asset.kode_aset}`}
-                          onClick={() => { setEditAsset(asset); setFormOpen(true); }}
-                          className="h-8 w-8 text-[#6B7280] hover:text-[#01567A]"
-                        >
-                          <Pencil size={15} />
-                        </Button>
-                        <Button
-                          variant="ghost" size="icon" aria-label="Hapus aset"
-                          data-testid={`asset-delete-${asset.kode_aset}`}
-                          onClick={() => setDeleteTarget(asset)}
-                          className="h-8 w-8 text-[#6B7280] hover:text-[#DC2626]"
-                        >
-                          <Trash2 size={15} />
-                        </Button>
+                        {hasPerm("assets.manage") && (
+                          <Button
+                            variant="ghost" size="icon" aria-label="Edit aset"
+                            data-testid={`asset-edit-${asset.kode_aset}`}
+                            onClick={() => { setEditAsset(asset); setFormOpen(true); }}
+                            className="h-8 w-8 text-[#6B7280] hover:text-[#01567A]"
+                          >
+                            <Pencil size={15} />
+                          </Button>
+                        )}
+                        {hasPerm("assets.delete") && (
+                          <Button
+                            variant="ghost" size="icon" aria-label="Hapus aset"
+                            data-testid={`asset-delete-${asset.kode_aset}`}
+                            onClick={() => setDeleteTarget(asset)}
+                            className="h-8 w-8 text-[#6B7280] hover:text-[#DC2626]"
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

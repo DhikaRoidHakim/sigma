@@ -1,21 +1,69 @@
 import os
 import uuid
 from datetime import datetime, timezone, timedelta
-from core import db, hash_password, verify_password, now_iso
+from core import db, hash_password, verify_password, now_iso, ALL_PERMISSION_KEYS
+
+STAFF_PERMISSIONS = ["assets.view", "assets.manage", "assets.move", "repairs.manage"]
+VIEWER_PERMISSIONS = ["assets.view"]
+
+
+async def _ensure_role(name: str, description: str, permissions: list, is_system: bool = False) -> str:
+    existing = await db.roles.find_one({"name": name})
+    if existing:
+        if is_system:
+            await db.roles.update_one({"_id": existing["_id"]}, {"$set": {"permissions": permissions, "is_system": True}})
+        return existing["_id"]
+    role_id = str(uuid.uuid4())
+    await db.roles.insert_one({
+        "_id": role_id, "name": name, "description": description,
+        "permissions": permissions, "is_system": is_system,
+        "created_at": now_iso(), "updated_at": now_iso(),
+    })
+    return role_id
+
+
+async def seed_roles() -> dict:
+    admin_role_id = await _ensure_role("Administrator", "Akses penuh ke seluruh sistem", ALL_PERMISSION_KEYS, is_system=True)
+    staff_role_id = await _ensure_role("Staff", "Operasional aset: mutasi, perbaikan, tambah/edit aset", STAFF_PERMISSIONS)
+    viewer_role_id = await _ensure_role("Viewer", "Hanya melihat data aset dan riwayat", VIEWER_PERMISSIONS)
+    return {"admin": admin_role_id, "staff": staff_role_id, "viewer": viewer_role_id}
 
 
 async def seed_admin():
+    roles = await seed_roles()
     admin_email = os.environ["ADMIN_EMAIL"]
     admin_password = os.environ["ADMIN_PASSWORD"]
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
         await db.users.insert_one({
             "_id": str(uuid.uuid4()), "email": admin_email, "name": "Administrator",
-            "password_hash": hash_password(admin_password), "role": "admin",
+            "password_hash": hash_password(admin_password), "role_id": roles["admin"], "is_active": True,
             "created_at": now_iso(), "updated_at": now_iso(),
         })
-    elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+    else:
+        updates = {}
+        if not verify_password(admin_password, existing["password_hash"]):
+            updates["password_hash"] = hash_password(admin_password)
+        if not existing.get("role_id"):
+            updates["role_id"] = roles["admin"]
+        if "is_active" not in existing:
+            updates["is_active"] = True
+        if updates:
+            await db.users.update_one({"email": admin_email}, {"$set": updates})
+
+    await db.users.update_many(
+        {"role_id": {"$exists": False}},
+        {"$set": {"role_id": roles["staff"], "is_active": True}},
+    )
+    await db.users.update_many({"is_active": {"$exists": False}}, {"$set": {"is_active": True}})
+
+    staff_email = "staff@sigma.co.id"
+    if await db.users.find_one({"email": staff_email}) is None:
+        await db.users.insert_one({
+            "_id": str(uuid.uuid4()), "email": staff_email, "name": "Staff Demo",
+            "password_hash": hash_password("Staff@2026"), "role_id": roles["staff"], "is_active": True,
+            "created_at": now_iso(), "updated_at": now_iso(),
+        })
 
 
 async def seed_data():
@@ -102,6 +150,7 @@ async def seed_data():
 
 async def create_indexes():
     await db.users.create_index("email", unique=True)
+    await db.roles.create_index("name", unique=True)
     await db.assets.create_index("kode_aset", unique=True)
     await db.asset_logs.create_index([("asset_id", 1), ("moved_at", -1)])
     await db.rooms.create_index("office_id")

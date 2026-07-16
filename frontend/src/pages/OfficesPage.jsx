@@ -12,8 +12,11 @@ import api, { formatApiError } from "@/services/api";
 import { formatDate } from "@/lib/format";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { useAuth } from "@/context/AuthContext";
 
 export default function OfficesPage() {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm("offices.manage");
   const [offices, setOffices] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -75,9 +78,11 @@ export default function OfficesPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-[#1F2937]">Kantor</h1>
           <p className="text-[#6B7280] mt-1.5 text-sm">Kelola daftar kantor tempat aset ditempatkan.</p>
         </div>
-        <Button data-testid="add-office-button" onClick={() => openForm()} className="bg-[#01567A] hover:bg-[#014462] text-white gap-2">
-          <Plus size={16} /> Tambah Kantor
-        </Button>
+        {canManage && (
+          <Button data-testid="add-office-button" onClick={() => openForm()} className="bg-[#01567A] hover:bg-[#014462] text-white gap-2">
+            <Plus size={16} /> Tambah Kantor
+          </Button>
+        )}
       </div>
 
       <div className="sigma-card mt-8">
@@ -111,16 +116,18 @@ export default function OfficesPage() {
                     <TableCell className="text-center font-mono text-sm text-[#6B7280]">{office.jumlah_aset}</TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-[#6B7280]">{formatDate(office.created_at)}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" aria-label="Edit kantor" data-testid={`office-edit-${office.id}`}
-                          onClick={() => openForm(office)} className="h-8 w-8 text-[#6B7280] hover:text-[#01567A]">
-                          <Pencil size={15} />
-                        </Button>
-                        <Button variant="ghost" size="icon" aria-label="Hapus kantor" data-testid={`office-delete-${office.id}`}
-                          onClick={() => setDeleteTarget(office)} className="h-8 w-8 text-[#6B7280] hover:text-[#DC2626]">
-                          <Trash2 size={15} />
-                        </Button>
-                      </div>
+                      {canManage && (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" aria-label="Edit kantor" data-testid={`office-edit-${office.id}`}
+                            onClick={() => openForm(office)} className="h-8 w-8 text-[#6B7280] hover:text-[#01567A]">
+                            <Pencil size={15} />
+                          </Button>
+                          <Button variant="ghost" size="icon" aria-label="Hapus kantor" data-testid={`office-delete-${office.id}`}
+                            onClick={() => setDeleteTarget(office)} className="h-8 w-8 text-[#6B7280] hover:text-[#DC2626]">
+                            <Trash2 size={15} />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

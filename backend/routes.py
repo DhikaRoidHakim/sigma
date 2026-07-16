@@ -2,12 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Request, Query,
 from fastapi.responses import Response as RawResponse
 import exports
 from core import (
-    get_current_user, hash_password, verify_password,
-    create_access_token, create_refresh_token, set_auth_cookies, now_iso,
+    get_current_user, require_permission, hash_password, verify_password,
+    create_access_token, create_refresh_token, set_auth_cookies, ALL_PERMISSIONS,
 )
 from repositories import user_repo
-from schemas import RegisterIn, LoginIn, UserOut, OfficeIn, RoomIn, AssetIn, MoveIn, RepairIn
-from services import office_service, room_service, asset_service, repair_service, stats_service
+from schemas import (
+    LoginIn, UserOut, OfficeIn, RoomIn, AssetIn, MoveIn, RepairIn,
+    RoleIn, UserCreateIn, UserUpdateIn, PasswordResetIn, UserStatusIn,
+)
+from services import (
+    office_service, room_service, asset_service, repair_service,
+    role_service, user_service, stats_service,
+)
 
 MEDIA_TYPES = {
     "csv": "text/csv",
@@ -28,20 +34,15 @@ api_router = APIRouter(tags=["sigma"])
 
 
 def _user_out(user: dict) -> dict:
-    return {"id": user.get("id") or user.get("_id"), "name": user["name"], "email": user["email"], "role": user.get("role", "user")}
-
-
-@auth_router.post("/register", response_model=UserOut)
-async def register(body: RegisterIn, response: Response):
-    email = body.email.lower()
-    if await user_repo.find_by_email(email):
-        raise HTTPException(422, "Email sudah terdaftar")
-    user = await user_repo.insert({
-        "name": body.name, "email": email,
-        "password_hash": hash_password(body.password), "role": "user",
-    })
-    set_auth_cookies(response, create_access_token(user["_id"], email), create_refresh_token(user["_id"]))
-    return _user_out(user)
+    return {
+        "id": user.get("id") or user.get("_id"),
+        "name": user["name"],
+        "email": user["email"],
+        "role_id": user.get("role_id"),
+        "role_name": user.get("role_name"),
+        "permissions": user.get("permissions", []),
+        "is_active": user.get("is_active", True),
+    }
 
 
 @auth_router.post("/login", response_model=UserOut)
@@ -49,7 +50,13 @@ async def login(body: LoginIn, response: Response):
     user = await user_repo.find_by_email(body.email.lower())
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Email atau password salah")
+    if user.get("is_active") is False:
+        raise HTTPException(403, "Akun Anda dinonaktifkan. Hubungi administrator.")
     set_auth_cookies(response, create_access_token(user["_id"], user["email"]), create_refresh_token(user["_id"]))
+    from repositories import role_repo
+    role = await role_repo.find_by_id(user["role_id"]) if user.get("role_id") else None
+    user["role_name"] = role["name"] if role else None
+    user["permissions"] = role["permissions"] if role else []
     return _user_out(user)
 
 
@@ -67,44 +74,44 @@ async def me(current_user: dict = Depends(get_current_user)):
 
 # ---------- Offices ----------
 @api_router.get("/offices")
-async def list_offices(current_user: dict = Depends(get_current_user)):
+async def list_offices(current_user: dict = Depends(require_permission("assets.view"))):
     return await office_service.list_all()
 
 
 @api_router.post("/offices", status_code=201)
-async def create_office(body: OfficeIn, current_user: dict = Depends(get_current_user)):
+async def create_office(body: OfficeIn, current_user: dict = Depends(require_permission("offices.manage"))):
     return await office_service.create(body)
 
 
 @api_router.put("/offices/{office_id}")
-async def update_office(office_id: str, body: OfficeIn, current_user: dict = Depends(get_current_user)):
+async def update_office(office_id: str, body: OfficeIn, current_user: dict = Depends(require_permission("offices.manage"))):
     return await office_service.update(office_id, body)
 
 
 @api_router.delete("/offices/{office_id}")
-async def delete_office(office_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_office(office_id: str, current_user: dict = Depends(require_permission("offices.manage"))):
     await office_service.delete(office_id)
     return {"message": "Kantor berhasil dihapus"}
 
 
 # ---------- Rooms ----------
 @api_router.get("/rooms")
-async def list_rooms(office_id: str = Query(default=None), current_user: dict = Depends(get_current_user)):
+async def list_rooms(office_id: str = Query(default=None), current_user: dict = Depends(require_permission("assets.view"))):
     return await room_service.list_all(office_id)
 
 
 @api_router.post("/rooms", status_code=201)
-async def create_room(body: RoomIn, current_user: dict = Depends(get_current_user)):
+async def create_room(body: RoomIn, current_user: dict = Depends(require_permission("rooms.manage"))):
     return await room_service.create(body)
 
 
 @api_router.put("/rooms/{room_id}")
-async def update_room(room_id: str, body: RoomIn, current_user: dict = Depends(get_current_user)):
+async def update_room(room_id: str, body: RoomIn, current_user: dict = Depends(require_permission("rooms.manage"))):
     return await room_service.update(room_id, body)
 
 
 @api_router.delete("/rooms/{room_id}")
-async def delete_room(room_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_room(room_id: str, current_user: dict = Depends(require_permission("rooms.manage"))):
     await room_service.delete(room_id)
     return {"message": "Ruangan berhasil dihapus"}
 
@@ -116,18 +123,18 @@ async def list_assets(
     office_id: str = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("assets.view")),
 ):
     return await asset_service.list_paginated(search, office_id, page, limit)
 
 
 @api_router.post("/assets", status_code=201)
-async def create_asset(body: AssetIn, current_user: dict = Depends(get_current_user)):
+async def create_asset(body: AssetIn, current_user: dict = Depends(require_permission("assets.manage"))):
     return await asset_service.create(body)
 
 
 @api_router.get("/assets/export")
-async def export_assets(format: str = Query(default="csv"), current_user: dict = Depends(get_current_user)):
+async def export_assets(format: str = Query(default="csv"), current_user: dict = Depends(require_permission("assets.import_export"))):
     if format not in ("csv", "xlsx"):
         raise HTTPException(422, "Format harus csv atau xlsx")
     rows = await asset_service.export_rows()
@@ -136,7 +143,7 @@ async def export_assets(format: str = Query(default="csv"), current_user: dict =
 
 
 @api_router.post("/assets/import")
-async def import_assets(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+async def import_assets(file: UploadFile = File(...), current_user: dict = Depends(require_permission("assets.import_export"))):
     name = (file.filename or "").lower()
     if not (name.endswith(".csv") or name.endswith(".xlsx")):
         raise HTTPException(422, "File harus berformat .csv atau .xlsx")
@@ -151,17 +158,17 @@ async def import_assets(file: UploadFile = File(...), current_user: dict = Depen
 
 
 @api_router.get("/assets/{asset_id}")
-async def get_asset(asset_id: str, current_user: dict = Depends(get_current_user)):
+async def get_asset(asset_id: str, current_user: dict = Depends(require_permission("assets.view"))):
     return await asset_service.get_detail(asset_id)
 
 
 @api_router.put("/assets/{asset_id}")
-async def update_asset(asset_id: str, body: AssetIn, current_user: dict = Depends(get_current_user)):
+async def update_asset(asset_id: str, body: AssetIn, current_user: dict = Depends(require_permission("assets.manage"))):
     return await asset_service.update(asset_id, body)
 
 
 @api_router.delete("/assets/{asset_id}")
-async def delete_asset(asset_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_asset(asset_id: str, current_user: dict = Depends(require_permission("assets.delete"))):
     await asset_service.delete(asset_id)
     return {"message": "Aset berhasil dihapus"}
 
@@ -174,18 +181,18 @@ async def asset_history(
     date_from: str = Query(default=None),
     date_to: str = Query(default=None),
     office_id: str = Query(default=None),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("assets.view")),
 ):
     return await asset_service.history(asset_id, page, limit, date_from, date_to, office_id)
 
 
 @api_router.post("/assets/{asset_id}/move")
-async def move_asset(asset_id: str, body: MoveIn, current_user: dict = Depends(get_current_user)):
+async def move_asset(asset_id: str, body: MoveIn, current_user: dict = Depends(require_permission("assets.move"))):
     return await asset_service.move(asset_id, body, current_user["name"])
 
 
 @api_router.get("/assets/{asset_id}/history/export")
-async def export_history(asset_id: str, format: str = Query(default="csv"), current_user: dict = Depends(get_current_user)):
+async def export_history(asset_id: str, format: str = Query(default="csv"), current_user: dict = Depends(require_permission("assets.view"))):
     if format not in ("csv", "pdf"):
         raise HTTPException(422, "Format harus csv atau pdf")
     asset = await asset_service.get_detail(asset_id)
@@ -206,29 +213,29 @@ async def list_repairs(
     asset_id: str,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=10, ge=1, le=100),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission("assets.view")),
 ):
     return await repair_service.list_paginated(asset_id, page, limit)
 
 
 @api_router.post("/assets/{asset_id}/repairs", status_code=201)
-async def create_repair(asset_id: str, body: RepairIn, current_user: dict = Depends(get_current_user)):
+async def create_repair(asset_id: str, body: RepairIn, current_user: dict = Depends(require_permission("repairs.manage"))):
     return await repair_service.create(asset_id, body, current_user["name"])
 
 
 @api_router.put("/repairs/{repair_id}")
-async def update_repair(repair_id: str, body: RepairIn, current_user: dict = Depends(get_current_user)):
+async def update_repair(repair_id: str, body: RepairIn, current_user: dict = Depends(require_permission("repairs.manage"))):
     return await repair_service.update(repair_id, body)
 
 
 @api_router.delete("/repairs/{repair_id}")
-async def delete_repair(repair_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_repair(repair_id: str, current_user: dict = Depends(require_permission("repairs.manage"))):
     await repair_service.delete(repair_id)
     return {"message": "Riwayat perbaikan berhasil dihapus"}
 
 
 @api_router.get("/assets/{asset_id}/repairs/export")
-async def export_repairs(asset_id: str, format: str = Query(default="csv"), current_user: dict = Depends(get_current_user)):
+async def export_repairs(asset_id: str, format: str = Query(default="csv"), current_user: dict = Depends(require_permission("assets.view"))):
     if format not in ("csv", "pdf"):
         raise HTTPException(422, "Format harus csv atau pdf")
     asset = await asset_service.get_detail(asset_id)
@@ -242,5 +249,65 @@ async def export_repairs(asset_id: str, format: str = Query(default="csv"), curr
 
 
 @api_router.get("/stats")
-async def get_stats(current_user: dict = Depends(get_current_user)):
+async def get_stats(current_user: dict = Depends(require_permission("assets.view"))):
     return await stats_service.get_stats()
+
+
+# ---------- Roles ----------
+@api_router.get("/permissions")
+async def list_permissions(current_user: dict = Depends(require_permission("roles.manage", "users.manage"))):
+    return ALL_PERMISSIONS
+
+
+@api_router.get("/roles")
+async def list_roles(current_user: dict = Depends(require_permission("roles.manage", "users.manage"))):
+    return await role_service.list_all()
+
+
+@api_router.post("/roles", status_code=201)
+async def create_role(body: RoleIn, current_user: dict = Depends(require_permission("roles.manage"))):
+    return await role_service.create(body)
+
+
+@api_router.put("/roles/{role_id}")
+async def update_role(role_id: str, body: RoleIn, current_user: dict = Depends(require_permission("roles.manage"))):
+    return await role_service.update(role_id, body)
+
+
+@api_router.delete("/roles/{role_id}")
+async def delete_role(role_id: str, current_user: dict = Depends(require_permission("roles.manage"))):
+    await role_service.delete(role_id)
+    return {"message": "Role berhasil dihapus"}
+
+
+# ---------- Users ----------
+@api_router.get("/users")
+async def list_users(current_user: dict = Depends(require_permission("users.manage"))):
+    return await user_service.list_all()
+
+
+@api_router.post("/users", status_code=201)
+async def create_user(body: UserCreateIn, current_user: dict = Depends(require_permission("users.manage"))):
+    return await user_service.create(body)
+
+
+@api_router.put("/users/{user_id}")
+async def update_user(user_id: str, body: UserUpdateIn, current_user: dict = Depends(require_permission("users.manage"))):
+    return await user_service.update(user_id, body, current_user["id"])
+
+
+@api_router.put("/users/{user_id}/password")
+async def reset_user_password(user_id: str, body: PasswordResetIn, current_user: dict = Depends(require_permission("users.manage"))):
+    await user_service.reset_password(user_id, body.password)
+    return {"message": "Password berhasil direset"}
+
+
+@api_router.put("/users/{user_id}/status")
+async def set_user_status(user_id: str, body: UserStatusIn, current_user: dict = Depends(require_permission("users.manage"))):
+    return await user_service.set_status(user_id, body.is_active, current_user["id"])
+
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(user_id: str, current_user: dict = Depends(require_permission("users.manage"))):
+    await user_service.delete(user_id, current_user["id"])
+    return {"message": "User berhasil dihapus"}

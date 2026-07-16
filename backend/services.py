@@ -1,8 +1,8 @@
 import math
 from fastapi import HTTPException
-from core import now_iso
-from repositories import office_repo, room_repo, asset_repo, asset_log_repo, asset_repair_repo
-from schemas import MoveIn, AssetIn, OfficeIn, RoomIn, RepairIn
+from core import now_iso, hash_password, ALL_PERMISSION_KEYS
+from repositories import office_repo, room_repo, asset_repo, asset_log_repo, asset_repair_repo, user_repo, role_repo
+from schemas import MoveIn, AssetIn, OfficeIn, RoomIn, RepairIn, RoleIn, UserCreateIn, UserUpdateIn
 
 
 def _paginate(total: int, page: int, limit: int) -> dict:
@@ -311,6 +311,116 @@ class RepairService:
         await asset_repair_repo.delete(repair_id)
 
 
+class RoleService:
+    def _validate_permissions(self, permissions: list):
+        invalid = [p for p in permissions if p not in ALL_PERMISSION_KEYS]
+        if invalid:
+            raise HTTPException(422, f"Izin tidak dikenal: {', '.join(invalid)}")
+        if not permissions:
+            raise HTTPException(422, "Pilih minimal satu izin")
+
+    async def list_all(self) -> list:
+        roles = await role_repo.find_many(sort=[("is_system", -1), ("name", 1)])
+        result = []
+        for r in roles:
+            out = _doc_out(r)
+            out["jumlah_user"] = await user_repo.count({"role_id": r["_id"]})
+            result.append(out)
+        return result
+
+    async def create(self, data: RoleIn) -> dict:
+        self._validate_permissions(data.permissions)
+        if await role_repo.find_by_name(data.name):
+            raise HTTPException(422, "Nama role sudah digunakan")
+        payload = data.model_dump()
+        payload["is_system"] = False
+        return _doc_out(await role_repo.insert(payload))
+
+    async def update(self, role_id: str, data: RoleIn) -> dict:
+        role = await role_repo.find_by_id(role_id)
+        if not role:
+            raise HTTPException(404, "Role tidak ditemukan")
+        if role.get("is_system"):
+            raise HTTPException(422, "Role sistem tidak dapat diubah")
+        self._validate_permissions(data.permissions)
+        existing = await role_repo.find_by_name(data.name)
+        if existing and existing["_id"] != role_id:
+            raise HTTPException(422, "Nama role sudah digunakan")
+        return _doc_out(await role_repo.update(role_id, data.model_dump()))
+
+    async def delete(self, role_id: str):
+        role = await role_repo.find_by_id(role_id)
+        if not role:
+            raise HTTPException(404, "Role tidak ditemukan")
+        if role.get("is_system"):
+            raise HTTPException(422, "Role sistem tidak dapat dihapus")
+        if await user_repo.count({"role_id": role_id}) > 0:
+            raise HTTPException(422, "Role masih digunakan oleh user. Pindahkan user ke role lain terlebih dahulu.")
+        await role_repo.delete(role_id)
+
+
+class UserService:
+    def _out(self, user: dict, roles: dict) -> dict:
+        role = roles.get(user.get("role_id"))
+        return {
+            "id": user["_id"], "name": user["name"], "email": user["email"],
+            "role_id": user.get("role_id"), "role_name": role["name"] if role else None,
+            "is_active": user.get("is_active", True), "created_at": user.get("created_at"),
+        }
+
+    async def _roles_map(self) -> dict:
+        return {r["_id"]: r for r in await role_repo.find_many()}
+
+    async def list_all(self) -> list:
+        users = await user_repo.find_many(sort=[("name", 1)])
+        roles = await self._roles_map()
+        return [self._out(u, roles) for u in users]
+
+    async def create(self, data: UserCreateIn) -> dict:
+        email = data.email.lower()
+        if await user_repo.find_by_email(email):
+            raise HTTPException(422, "Email sudah terdaftar")
+        if not await role_repo.find_by_id(data.role_id):
+            raise HTTPException(422, "Role tidak ditemukan")
+        user = await user_repo.insert({
+            "name": data.name, "email": email,
+            "password_hash": hash_password(data.password),
+            "role_id": data.role_id, "is_active": True,
+        })
+        return self._out(user, await self._roles_map())
+
+    async def update(self, user_id: str, data: UserUpdateIn, actor_id: str) -> dict:
+        user = await user_repo.find_by_id(user_id)
+        if not user:
+            raise HTTPException(404, "User tidak ditemukan")
+        if not await role_repo.find_by_id(data.role_id):
+            raise HTTPException(422, "Role tidak ditemukan")
+        if user_id == actor_id and data.role_id != user.get("role_id"):
+            raise HTTPException(422, "Tidak dapat mengubah role akun sendiri")
+        updated = await user_repo.update(user_id, {"name": data.name, "role_id": data.role_id})
+        return self._out(updated, await self._roles_map())
+
+    async def reset_password(self, user_id: str, password: str):
+        if not await user_repo.find_by_id(user_id):
+            raise HTTPException(404, "User tidak ditemukan")
+        await user_repo.update(user_id, {"password_hash": hash_password(password)})
+
+    async def set_status(self, user_id: str, is_active: bool, actor_id: str) -> dict:
+        if not await user_repo.find_by_id(user_id):
+            raise HTTPException(404, "User tidak ditemukan")
+        if user_id == actor_id:
+            raise HTTPException(422, "Tidak dapat menonaktifkan akun sendiri")
+        updated = await user_repo.update(user_id, {"is_active": is_active})
+        return self._out(updated, await self._roles_map())
+
+    async def delete(self, user_id: str, actor_id: str):
+        if not await user_repo.find_by_id(user_id):
+            raise HTTPException(404, "User tidak ditemukan")
+        if user_id == actor_id:
+            raise HTTPException(422, "Tidak dapat menghapus akun sendiri")
+        await user_repo.delete(user_id)
+
+
 class StatsService:
     async def get_stats(self) -> dict:
         return {
@@ -325,4 +435,6 @@ office_service = OfficeService()
 room_service = RoomService()
 asset_service = AssetService()
 repair_service = RepairService()
+role_service = RoleService()
+user_service = UserService()
 stats_service = StatsService()
