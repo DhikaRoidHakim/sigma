@@ -20,7 +20,7 @@ ENV CI=false
 ENV GENERATE_SOURCEMAP=false
 
 # Install deps first (better layer caching)
-COPY package.json yarn.lock ./
+COPY package.json ./
 RUN yarn install --frozen-lockfile --network-timeout 600000
 
 # Copy source and build
