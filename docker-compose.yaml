@@ -3,7 +3,7 @@
 # Orchestrates: MongoDB + FastAPI Backend + React/Nginx Frontend
 #
 # Usage:
-#   1. cp .env.example .env    (edit values as needed)
+#   1. cp env.example .env    (edit values as needed)
 #   2. docker compose up -d --build
 #   3. Open http://localhost:8080
 # =========================================================
