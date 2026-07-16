@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import AssetDetailPage from "@/pages/AssetDetailPage";
+import PublicAssetPage from "@/pages/PublicAssetPage";
 import OfficesPage from "@/pages/OfficesPage";
 import RoomsPage from "@/pages/RoomsPage";
 import UsersPage from "@/pages/UsersPage";
@@ -37,6 +38,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/public/assets/:id" element={<PublicAssetPage />} />
           <Route
             element={
               <ProtectedRoute>

@@ -25,7 +25,7 @@ MEDIA_TYPES = {
 
 def _asset_url(asset_id: str) -> str:
     base = os.environ.get("FRONTEND_URL", "").rstrip("/")
-    return f"{base}/assets/{asset_id}"
+    return f"{base}/public/assets/{asset_id}"
 
 
 def _file_response(content: bytes, fmt: str, filename: str) -> RawResponse:
@@ -37,6 +37,40 @@ def _file_response(content: bytes, fmt: str, filename: str) -> RawResponse:
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 api_router = APIRouter(tags=["sigma"])
+public_router = APIRouter(prefix="/public", tags=["public"])
+
+
+@public_router.get("/assets/{asset_id}")
+async def public_asset_detail(asset_id: str):
+    asset = await asset_service.get_detail(asset_id)
+    return {
+        "id": asset["id"],
+        "kode_aset": asset["kode_aset"],
+        "nama_aset": asset["nama_aset"],
+        "jenis_inventaris": asset.get("jenis_inventaris"),
+        "golongan": asset.get("golongan"),
+        "tanggal_pembelian": asset.get("tanggal_pembelian"),
+        "status": asset.get("status"),
+        "current_office_name": asset.get("current_office_name"),
+        "current_room_name": asset.get("current_room_name"),
+        "last_moved_at": asset.get("last_moved_at"),
+        "in_repair": asset.get("in_repair", False),
+        "total_moves": asset.get("total_moves", 0),
+        "total_repairs": asset.get("total_repairs", 0),
+        "created_at": asset.get("created_at"),
+    }
+
+
+@public_router.get("/assets/{asset_id}/history")
+async def public_asset_history(asset_id: str):
+    rows = await asset_service.all_history_rows(asset_id)
+    return {"items": rows, "total": len(rows)}
+
+
+@public_router.get("/assets/{asset_id}/repairs")
+async def public_asset_repairs(asset_id: str):
+    rows = await repair_service.all_rows(asset_id)
+    return {"items": rows, "total": len(rows)}
 
 
 def _user_out(user: dict) -> dict:
@@ -164,10 +198,14 @@ async def import_assets(file: UploadFile = File(...), current_user: dict = Depen
 
 
 @api_router.get("/assets/labels/export")
-async def export_labels(current_user: dict = Depends(require_permission("assets.view"))):
-    rows = await asset_service.export_rows()
+async def export_labels(
+    office_id: str = Query(default=None),
+    room_id: str = Query(default=None),
+    current_user: dict = Depends(require_permission("assets.view")),
+):
+    rows = await asset_service.export_rows(office_id=office_id, room_id=room_id)
     if not rows:
-        raise HTTPException(422, "Tidak ada aset untuk dicetak")
+        raise HTTPException(422, "Tidak ada aset untuk dicetak pada filter tersebut")
     content = exports.bulk_labels_pdf(rows, lambda a: _asset_url(a["id"]))
     return _file_response(content, "pdf", "sigma-label-qr-aset")
 

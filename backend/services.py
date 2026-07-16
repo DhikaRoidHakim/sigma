@@ -222,8 +222,13 @@ class AssetService:
         docs = await asset_log_repo.find_many({"asset_id": asset_id}, sort=[("moved_at", -1)], limit=10000)
         return [_doc_out(d) for d in docs]
 
-    async def export_rows(self) -> list:
-        docs = await asset_repo.find_many({}, sort=[("kode_aset", 1)], limit=10000)
+    async def export_rows(self, office_id: str = None, room_id: str = None) -> list:
+        query = {}
+        if office_id:
+            query["current_office_id"] = office_id
+        if room_id:
+            query["current_room_id"] = room_id
+        docs = await asset_repo.find_many(query, sort=[("kode_aset", 1)], limit=10000)
         offices = {o["_id"]: o["nama_kantor"] for o in await office_repo.find_many()}
         rooms = {r["_id"]: r["nama_ruangan"] for r in await room_repo.find_many()}
         rows = []

@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { AssetFormDialog } from "@/features/assets/AssetFormDialog";
 import { ImportDialog } from "@/features/assets/ImportDialog";
+import { PrintLabelsDialog } from "@/features/assets/PrintLabelsDialog";
 import { useAuth } from "@/context/AuthContext";
 
 const statCards = [
@@ -43,19 +44,7 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [printingLabels, setPrintingLabels] = useState(false);
-
-  const handlePrintLabels = async () => {
-    setPrintingLabels(true);
-    try {
-      await downloadFile("/assets/labels/export");
-      toast.success("Label QR semua aset diunduh (PDF)");
-    } catch (err) {
-      toast.error(formatApiError(err));
-    } finally {
-      setPrintingLabels(false);
-    }
-  };
+  const [printOpen, setPrintOpen] = useState(false);
 
   const handleExportAssets = async (format) => {
     setExporting(true);
@@ -128,11 +117,10 @@ export default function DashboardPage() {
           <Button
             variant="outline"
             data-testid="print-labels-button"
-            disabled={printingLabels}
-            onClick={handlePrintLabels}
+            onClick={() => setPrintOpen(true)}
             className="gap-2 border-[#E5E7EB]"
           >
-            {printingLabels ? <Loader2 size={16} className="animate-spin" /> : <QrCode size={16} />}
+            <QrCode size={16} />
             Label QR
           </Button>
           {hasPerm("assets.import_export") && (
@@ -334,6 +322,7 @@ export default function DashboardPage() {
 
       <AssetFormDialog open={formOpen} onOpenChange={setFormOpen} asset={editAsset} offices={offices} onSaved={refreshAll} />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshAll} />
+      <PrintLabelsDialog open={printOpen} onOpenChange={setPrintOpen} offices={offices} />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(v) => !v && setDeleteTarget(null)}

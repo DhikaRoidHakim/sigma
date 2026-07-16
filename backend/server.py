@@ -10,7 +10,7 @@ from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
 from core import client
-from routes import auth_router, api_router
+from routes import auth_router, api_router, public_router
 from seed import seed_admin, seed_data, create_indexes
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -27,6 +27,7 @@ async def root():
 
 
 root_router.include_router(auth_router)
+root_router.include_router(public_router)
 root_router.include_router(api_router)
 app.include_router(root_router)
 

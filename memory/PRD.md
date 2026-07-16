@@ -53,12 +53,17 @@ Build SIGMA, an enterprise Asset Location Tracking application: track current as
 - Akun: admin@sigma.co.id/Sigma@2026 (Administrator), staff@sigma.co.id/Staff@2026 (Staff)
 - Testing: 70/70 backend pytest pass (20 RBAC baru + 50 regresi), UI admin & staff terverifikasi (iteration_3)
 
+## Implemented (Iteration 5) ✅ — QR Label Filtering & Public Asset Page
+- Cetak Label QR dengan filter cakupan: Semua Aset / Per Kantor / Per Ruangan (endpoint `/api/assets/labels/export?office_id&room_id`); dialog pemilihan cakupan di dashboard, Cetak Label PDF 14/hal A4
+- Halaman publik `/public/assets/{id}` (tanpa login) — hasil scan QR menampilkan info aset, lokasi saat ini, timeline riwayat perpindahan, dan riwayat perbaikan; branded SIGMA, responsif
+- Endpoint publik tanpa auth: `/api/public/assets/{id}`, `/api/public/assets/{id}/history`, `/api/public/assets/{id}/repairs` (data terbatas: tidak ada nilai_pembelian, tidak ada biaya perbaikan)
+- QR code sekarang meng-encode URL publik (bukan URL admin)
+
 ## Credentials
 admin@sigma.co.id / Sigma@2026 (see /app/memory/test_credentials.md)
 
 ## Backlog
 - P2: Brute-force login lockout, password reset flow (self-service)
-- P2: QR-code asset labels for scanning
 - P2: Global activity feed (all assets' recent moves) on dashboard
 - P2: Laporan penyusutan otomatis (depresiasi per golongan)
 - P2: Audit log aksi user (siapa mengubah apa)
