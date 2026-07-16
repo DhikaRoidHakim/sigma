@@ -45,12 +45,20 @@ Build SIGMA, an enterprise Asset Location Tracking application: track current as
 - Endpoint baru: /assets/export, /assets/import, /assets/{id}/repairs (CRUD), /assets/{id}/history/export, /assets/{id}/repairs/export
 - Testing: 50/50 backend pytest pass (23 baru + 27 regresi), semua flow UI terverifikasi (iteration_2)
 
+## Implemented (Iteration 3) ✅ — User Management & RBAC
+- Roles collection dinamis dengan CRUD (nama, deskripsi, izin dari katalog 10 permission keys); seeded: Administrator (system, semua izin, terkunci), Staff, Viewer
+- Manajemen User (admin only): tambah user, edit nama/role, reset password, aktif/nonaktif, hapus; register publik DIHAPUS; proteksi diri sendiri (tidak bisa hapus/nonaktif/ubah role akun sendiri)
+- Enforcement server-side deny-by-default via require_permission dependency di semua route; permissions dibaca ulang dari DB tiap request (revocation langsung berlaku)
+- Frontend: hasPerm helper, sidebar & tombol aksi tersembunyi sesuai izin, PermissionRoute untuk /users & /roles, halaman Manajemen User + Role & Izin (checkbox izin per grup)
+- Akun: admin@sigma.co.id/Sigma@2026 (Administrator), staff@sigma.co.id/Staff@2026 (Staff)
+- Testing: 70/70 backend pytest pass (20 RBAC baru + 50 regresi), UI admin & staff terverifikasi (iteration_3)
+
 ## Credentials
 admin@sigma.co.id / Sigma@2026 (see /app/memory/test_credentials.md)
 
 ## Backlog
-- P1: User management page (register is API-only), role-based permissions (admin vs user)
-- P2: Brute-force login lockout, password reset flow
+- P2: Brute-force login lockout, password reset flow (self-service)
 - P2: QR-code asset labels for scanning
 - P2: Global activity feed (all assets' recent moves) on dashboard
 - P2: Laporan penyusutan otomatis (depresiasi per golongan)
+- P2: Audit log aksi user (siapa mengubah apa)
