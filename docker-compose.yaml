@@ -52,7 +52,7 @@ services:
             JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
             ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sigma.co.id}
             ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Sigma@2026}
-            FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8081}
+            FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8091}
         expose:
             - '8001'
         ports:
