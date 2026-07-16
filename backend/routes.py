@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, Query, UploadFile, File
 from fastapi.responses import Response as RawResponse
+import os
 import exports
 from core import (
     get_current_user, require_permission, hash_password, verify_password,
@@ -20,6 +21,11 @@ MEDIA_TYPES = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "pdf": "application/pdf",
 }
+
+
+def _asset_url(asset_id: str) -> str:
+    base = os.environ.get("FRONTEND_URL", "").rstrip("/")
+    return f"{base}/assets/{asset_id}"
 
 
 def _file_response(content: bytes, fmt: str, filename: str) -> RawResponse:
@@ -157,9 +163,35 @@ async def import_assets(file: UploadFile = File(...), current_user: dict = Depen
     return await asset_service.import_rows(rows)
 
 
+@api_router.get("/assets/labels/export")
+async def export_labels(current_user: dict = Depends(require_permission("assets.view"))):
+    rows = await asset_service.export_rows()
+    if not rows:
+        raise HTTPException(422, "Tidak ada aset untuk dicetak")
+    content = exports.bulk_labels_pdf(rows, lambda a: _asset_url(a["id"]))
+    return _file_response(content, "pdf", "sigma-label-qr-aset")
+
+
 @api_router.get("/assets/{asset_id}")
 async def get_asset(asset_id: str, current_user: dict = Depends(require_permission("assets.view"))):
     return await asset_service.get_detail(asset_id)
+
+
+@api_router.get("/assets/{asset_id}/qrcode")
+async def asset_qrcode(asset_id: str, current_user: dict = Depends(require_permission("assets.view"))):
+    asset = await asset_service.get_detail(asset_id)
+    png = exports.qr_png_bytes(_asset_url(asset_id))
+    return RawResponse(
+        content=png, media_type="image/png",
+        headers={"Content-Disposition": f'inline; filename="qr-{asset["kode_aset"]}.png"'},
+    )
+
+
+@api_router.get("/assets/{asset_id}/label")
+async def asset_label(asset_id: str, current_user: dict = Depends(require_permission("assets.view"))):
+    asset = await asset_service.get_detail(asset_id)
+    content = exports.single_label_pdf(asset, _asset_url(asset_id))
+    return _file_response(content, "pdf", f"label-{asset['kode_aset']}")
 
 
 @api_router.put("/assets/{asset_id}")

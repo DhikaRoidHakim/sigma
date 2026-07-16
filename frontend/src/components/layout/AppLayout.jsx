@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Building2, DoorOpen, LogOut, Menu, X, Hexagon, Users, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Building2, DoorOpen, LogOut, Menu, X, Users, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 
@@ -25,7 +25,7 @@ export const AppLayout = () => {
   const navContent = (
     <>
       <div className="flex items-center gap-2.5 px-6 h-16 border-b border-white/10">
-        <Hexagon size={26} className="text-[#92BA3C]" strokeWidth={2} />
+        <img src="/logo.png" alt="Logo SIGMA" className="w-8 h-8 rounded-full shrink-0" />
         <div>
           <p className="text-white font-semibold text-lg tracking-tight leading-none">SIGMA</p>
           <p className="text-white/50 text-[10px] tracking-wider mt-0.5">MANAJEMEN ASET</p>
@@ -83,7 +83,7 @@ export const AppLayout = () => {
 
       <header className="lg:hidden sticky top-0 z-40 flex items-center justify-between h-14 px-4 bg-[#01567A]">
         <div className="flex items-center gap-2">
-          <Hexagon size={22} className="text-[#92BA3C]" />
+          <img src="/logo.png" alt="Logo SIGMA" className="w-7 h-7 rounded-full" />
           <span className="text-white font-semibold tracking-tight">SIGMA</span>
         </div>
         <button

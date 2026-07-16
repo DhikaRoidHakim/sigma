@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Package, Building2, DoorOpen, History, Search, Plus, Pencil, Trash2, MapPin, ArrowRight, Upload, Download, Wrench, Loader2 } from "lucide-react";
+import { Package, Building2, DoorOpen, History, Search, Plus, Pencil, Trash2, MapPin, ArrowRight, Upload, Download, Wrench, Loader2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,19 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [printingLabels, setPrintingLabels] = useState(false);
+
+  const handlePrintLabels = async () => {
+    setPrintingLabels(true);
+    try {
+      await downloadFile("/assets/labels/export");
+      toast.success("Label QR semua aset diunduh (PDF)");
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setPrintingLabels(false);
+    }
+  };
 
   const handleExportAssets = async (format) => {
     setExporting(true);
@@ -112,6 +125,16 @@ export default function DashboardPage() {
           <p className="text-[#6B7280] mt-1.5 text-sm">Pantau posisi seluruh aset dan riwayat perpindahannya.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            data-testid="print-labels-button"
+            disabled={printingLabels}
+            onClick={handlePrintLabels}
+            className="gap-2 border-[#E5E7EB]"
+          >
+            {printingLabels ? <Loader2 size={16} className="animate-spin" /> : <QrCode size={16} />}
+            Label QR
+          </Button>
           {hasPerm("assets.import_export") && (
             <>
               <Button

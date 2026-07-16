@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { Hexagon, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,7 @@ export default function LoginPage() {
     <div className="min-h-screen grid lg:grid-cols-2 bg-[#F8FAFC]">
       <div className="hidden lg:flex flex-col justify-between bg-[#01567A] p-12">
         <div className="flex items-center gap-3">
-          <Hexagon size={32} className="text-[#92BA3C]" strokeWidth={2} />
+          <img src="/logo.png" alt="Logo SIGMA" className="w-10 h-10 rounded-full" />
           <div>
             <p className="text-white font-semibold text-xl tracking-tight leading-none">SIGMA</p>
             <p className="text-white/50 text-[11px] tracking-widest mt-1">SISTEM INFORMASI MANAJEMEN ASET</p>
@@ -55,7 +55,7 @@ export default function LoginPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <Hexagon size={26} className="text-[#92BA3C]" />
+            <img src="/logo.png" alt="Logo SIGMA" className="w-8 h-8 rounded-full" />
             <span className="font-semibold text-lg text-[#01567A]">SIGMA</span>
           </div>
           <h2 className="text-2xl font-semibold tracking-tight text-[#1F2937]">Masuk ke SIGMA</h2>

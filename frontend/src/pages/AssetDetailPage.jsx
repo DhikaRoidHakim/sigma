@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Package, Building2, MapPin, Calendar, Clock, History, ChevronRight, FilterX, Tag, Layers, Banknote, Wrench, Download, Loader2 } from "lucide-react";
+import { Package, Building2, MapPin, Calendar, Clock, History, ChevronRight, FilterX, Tag, Layers, Banknote, Wrench, Download, Loader2, QrCode } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { MoveAssetForm } from "@/features/assets/MoveAssetForm";
 import { HistoryTimeline } from "@/features/assets/HistoryTimeline";
 import { RepairSection } from "@/features/assets/RepairSection";
+import { QrLabelDialog } from "@/features/assets/QrLabelDialog";
 import { useAuth } from "@/context/AuthContext";
 
 const InfoRow = ({ icon: Icon, label, value, mono = false }) => (
@@ -41,6 +42,7 @@ export default function AssetDetailPage() {
   const [dateTo, setDateTo] = useState("");
   const [officeFilter, setOfficeFilter] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const hasFilters = Boolean(dateFrom || dateTo || officeFilter);
 
@@ -151,6 +153,12 @@ export default function AssetDetailPage() {
               <Wrench size={11} /> Dalam Perbaikan
             </Badge>
           )}
+          <Button
+            variant="outline" size="sm" data-testid="qr-label-button"
+            onClick={() => setQrOpen(true)} className="gap-1.5 border-[#E5E7EB]"
+          >
+            <QrCode size={14} /> Label QR
+          </Button>
         </div>
       </div>
 
@@ -277,6 +285,7 @@ export default function AssetDetailPage() {
       </div>
 
       <RepairSection assetId={id} onChanged={fetchAsset} />
+      <QrLabelDialog open={qrOpen} onOpenChange={setQrOpen} asset={asset} />
     </motion.div>
   );
 }

@@ -1,14 +1,19 @@
 import csv
 import io
+import qrcode
+from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas as pdfcanvas
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 PRIMARY = colors.HexColor("#01567A")
 BORDER = colors.HexColor("#E5E7EB")
+LOGO_PATH = Path(__file__).parent / "logo.png"
 
 ASSET_COLUMNS = [
     ("kode_aset", "Kode Aset"),
@@ -47,6 +52,95 @@ def _fmt(value):
     if value is None:
         return ""
     return str(value)
+
+
+def qr_png_bytes(data: str) -> bytes:
+    qr = qrcode.QRCode(box_size=10, border=2, error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#01567A", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _truncate_to_width(c, text: str, font: str, size: float, max_width: float) -> str:
+    if c.stringWidth(text, font, size) <= max_width:
+        return text
+    while text and c.stringWidth(text + "…", font, size) > max_width:
+        text = text[:-1]
+    return text + "…"
+
+
+def _draw_label(c, x: float, y: float, w: float, h: float, asset: dict, qr_data: str):
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.6)
+    c.roundRect(x, y, w, h, 2.5 * mm, stroke=1, fill=0)
+    pad = 3.5 * mm
+    qr_size = h - 2 * pad
+    qr_reader = ImageReader(io.BytesIO(qr_png_bytes(qr_data)))
+    c.drawImage(qr_reader, x + pad, y + pad, qr_size, qr_size)
+
+    tx = x + pad + qr_size + 3.5 * mm
+    text_w = x + w - pad - tx
+    top = y + h - pad
+
+    logo_size = 5.5 * mm
+    if LOGO_PATH.exists():
+        c.drawImage(ImageReader(str(LOGO_PATH)), tx, top - logo_size, logo_size, logo_size, mask="auto")
+        brand_x = tx + logo_size + 1.8 * mm
+    else:
+        brand_x = tx
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(brand_x, top - logo_size + 1.4 * mm, "SIGMA")
+
+    c.setFillColor(colors.black)
+    c.setFont("Courier-Bold", 11)
+    c.drawString(tx, top - logo_size - 6 * mm, _truncate_to_width(c, asset.get("kode_aset", ""), "Courier-Bold", 11, text_w))
+
+    c.setFillColor(colors.HexColor("#1F2937"))
+    c.setFont("Helvetica", 7.5)
+    nama = asset.get("nama_aset", "")
+    line1 = _truncate_to_width(c, nama, "Helvetica", 7.5, text_w)
+    c.drawString(tx, top - logo_size - 10.5 * mm, line1)
+
+    c.setFillColor(colors.HexColor("#6B7280"))
+    c.setFont("Helvetica", 6.5)
+    lokasi = " / ".join(filter(None, [asset.get("current_office_name"), asset.get("current_room_name")])) or "Belum ditempatkan"
+    c.drawString(tx, top - logo_size - 14.5 * mm, _truncate_to_width(c, lokasi, "Helvetica", 6.5, text_w))
+
+
+def single_label_pdf(asset: dict, qr_data: str) -> bytes:
+    w, h = 100 * mm, 40 * mm
+    buf = io.BytesIO()
+    c = pdfcanvas.Canvas(buf, pagesize=(w, h))
+    _draw_label(c, 1.5 * mm, 1.5 * mm, w - 3 * mm, h - 3 * mm, asset, qr_data)
+    c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+def bulk_labels_pdf(assets: list, qr_data_fn) -> bytes:
+    page_w, page_h = A4
+    label_w, label_h = 90 * mm, 36 * mm
+    cols, rows = 2, 7
+    margin_x = (page_w - cols * label_w) / (cols + 1)
+    margin_y = (page_h - rows * label_h) / (rows + 1)
+    buf = io.BytesIO()
+    c = pdfcanvas.Canvas(buf, pagesize=A4)
+    for i, asset in enumerate(assets):
+        pos = i % (cols * rows)
+        if i > 0 and pos == 0:
+            c.showPage()
+        col = pos % cols
+        row = pos // cols
+        x = margin_x + col * (label_w + margin_x)
+        y = page_h - margin_y - label_h - row * (label_h + margin_y)
+        _draw_label(c, x, y, label_w, label_h, asset, qr_data_fn(asset))
+    c.showPage()
+    c.save()
+    return buf.getvalue()
 
 
 def rows_to_csv(rows: list, columns: list) -> bytes:
