@@ -53,6 +53,7 @@ async def public_asset_detail(asset_id: str):
         "status": asset.get("status"),
         "current_office_name": asset.get("current_office_name"),
         "current_room_name": asset.get("current_room_name"),
+        "current_room_pic": asset.get("current_room_pic"),
         "last_moved_at": asset.get("last_moved_at"),
         "in_repair": asset.get("in_repair", False),
         "total_moves": asset.get("total_moves", 0),

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { DoorOpen, Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { DoorOpen, Plus, Pencil, Trash2, Building2, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ export default function RoomsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
+  const [pic, setPic] = useState("");
   const [formOfficeId, setFormOfficeId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -44,6 +45,7 @@ export default function RoomsPage() {
   const openForm = (room = null) => {
     setEditing(room);
     setName(room?.nama_ruangan || "");
+    setPic(room?.penanggung_jawab || "");
     setFormOfficeId(room?.office_id || null);
     setFormOpen(true);
   };
@@ -55,12 +57,17 @@ export default function RoomsPage() {
       return;
     }
     setSaving(true);
+    const payload = {
+      nama_ruangan: name,
+      office_id: formOfficeId,
+      penanggung_jawab: pic.trim() || null,
+    };
     try {
       if (editing) {
-        await api.put(`/rooms/${editing.id}`, { nama_ruangan: name, office_id: formOfficeId });
+        await api.put(`/rooms/${editing.id}`, payload);
         toast.success("Ruangan berhasil diperbarui");
       } else {
-        await api.post("/rooms", { nama_ruangan: name, office_id: formOfficeId });
+        await api.post("/rooms", payload);
         toast.success("Ruangan berhasil ditambahkan");
       }
       setFormOpen(false);
@@ -125,6 +132,7 @@ export default function RoomsPage() {
                 <TableRow className="hover:bg-transparent border-[#E5E7EB]">
                   <TableHead className="text-xs uppercase tracking-wider">Nama Ruangan</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Kantor</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider">Penanggung Jawab</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-center">Aset</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider hidden md:table-cell">Dibuat</TableHead>
                   <TableHead className="text-right text-xs uppercase tracking-wider">Aksi</TableHead>
@@ -142,6 +150,16 @@ export default function RoomsPage() {
                       <span className="inline-flex items-center gap-1.5">
                         <Building2 size={13} /> {room.nama_kantor || "-"}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-[#1F2937]">
+                      {room.penanggung_jawab ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <UserCog size={13} className="text-[#01567A]" />
+                          {room.penanggung_jawab}
+                        </span>
+                      ) : (
+                        <span className="text-[#6B7280]">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center font-mono text-sm text-[#6B7280]">{room.jumlah_aset}</TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-[#6B7280]">{formatDate(room.created_at)}</TableCell>
@@ -188,6 +206,18 @@ export default function RoomsPage() {
               <Label htmlFor="nama_ruangan">Nama Ruangan</Label>
               <Input id="nama_ruangan" required data-testid="room-name-input" value={name}
                 onChange={(e) => setName(e.target.value)} placeholder="Ruang Meeting Lantai 2" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="penanggung_jawab">Penanggung Jawab</Label>
+              <Input
+                id="penanggung_jawab"
+                data-testid="room-pic-input"
+                value={pic}
+                maxLength={100}
+                onChange={(e) => setPic(e.target.value)}
+                placeholder="Contoh: Budi Santoso"
+              />
+              <p className="text-xs text-[#6B7280]">Opsional. Ditampilkan di detail aset & halaman scan QR.</p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)} disabled={saving}>Batal</Button>

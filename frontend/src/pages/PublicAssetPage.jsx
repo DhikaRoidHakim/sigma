@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import {
   Package, Building2, MapPin, Calendar, Clock, History, Tag, Layers,
-  Wrench, ArrowRight, User, ShieldCheck, AlertCircle,
+  Wrench, ArrowRight, User, ShieldCheck, AlertCircle, UserCog,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -169,6 +169,7 @@ export default function PublicAssetPage() {
                 <div className="divide-y divide-[#E5E7EB]">
                   <InfoItem icon={Building2} label="Kantor" value={asset.current_office_name || "Belum ditempatkan"} />
                   <InfoItem icon={MapPin} label="Ruangan" value={asset.current_room_name} />
+                  <InfoItem icon={UserCog} label="Penanggung Jawab Ruangan" value={asset.current_room_pic} />
                   <InfoItem
                     icon={Clock}
                     label="Terakhir Dipindahkan"

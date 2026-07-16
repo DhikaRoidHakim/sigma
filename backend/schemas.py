@@ -76,12 +76,14 @@ class OfficeOut(BaseModel):
 class RoomIn(BaseModel):
     office_id: str
     nama_ruangan: str = Field(min_length=2, max_length=150)
+    penanggung_jawab: Optional[str] = Field(default=None, max_length=100)
 
 
 class RoomOut(BaseModel):
     id: str
     office_id: Optional[str] = None
     nama_ruangan: str
+    penanggung_jawab: Optional[str] = None
     nama_kantor: Optional[str] = None
     jumlah_aset: int = 0
     created_at: str

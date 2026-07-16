@@ -82,10 +82,12 @@ class AssetService:
         if offices is None:
             offices = {o["_id"]: o["nama_kantor"] for o in await office_repo.find_many()}
         if rooms is None:
-            rooms = {r["_id"]: r["nama_ruangan"] for r in await room_repo.find_many()}
+            rooms = {r["_id"]: r for r in await room_repo.find_many()}
+        room = rooms.get(asset.get("current_room_id"))
         out = _doc_out(asset)
         out["current_office_name"] = offices.get(asset.get("current_office_id"))
-        out["current_room_name"] = rooms.get(asset.get("current_room_id"))
+        out["current_room_name"] = room.get("nama_ruangan") if isinstance(room, dict) else room
+        out["current_room_pic"] = room.get("penanggung_jawab") if isinstance(room, dict) else None
         out["total_moves"] = await asset_log_repo.count({"asset_id": asset["_id"]})
         out["total_repairs"] = await asset_repair_repo.count({"asset_id": asset["_id"]})
         out["in_repair"] = await asset_repair_repo.count({"asset_id": asset["_id"], "status": "Dalam Perbaikan"}) > 0
@@ -103,7 +105,7 @@ class AssetService:
         total = await asset_repo.count(query)
         docs = await asset_repo.find_many(query, sort=[("created_at", -1)], skip=(page - 1) * limit, limit=limit)
         offices = {o["_id"]: o["nama_kantor"] for o in await office_repo.find_many()}
-        rooms = {r["_id"]: r["nama_ruangan"] for r in await room_repo.find_many()}
+        rooms = {r["_id"]: r for r in await room_repo.find_many()}
         items = [await self._enrich(d, offices, rooms) for d in docs]
         return {"items": items, **_paginate(total, page, limit)}
 

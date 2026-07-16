@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Package, Building2, MapPin, Calendar, Clock, History, ChevronRight, FilterX, Tag, Layers, Banknote, Wrench, Download, Loader2, QrCode } from "lucide-react";
+import { Package, Building2, MapPin, Calendar, Clock, History, ChevronRight, FilterX, Tag, Layers, Banknote, Wrench, Download, Loader2, QrCode, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,6 +204,7 @@ export default function AssetDetailPage() {
             <div className="divide-y divide-[#E5E7EB]">
               <InfoRow icon={Building2} label="Kantor" value={asset.current_office_name || "Belum ditempatkan"} />
               <InfoRow icon={MapPin} label="Ruangan" value={asset.current_room_name || "-"} />
+              <InfoRow icon={UserCog} label="Penanggung Jawab Ruangan" value={asset.current_room_pic || "-"} />
               <InfoRow icon={History} label="Total Mutasi" value={`${asset.total_moves} perpindahan`} mono />
             </div>
           </div>
