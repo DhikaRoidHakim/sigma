@@ -60,7 +60,7 @@ services:
             # Comment out in production and access only via nginx.
             - '${BACKEND_PORT:-8003}:8001'
         healthcheck:
-            test: ['CMD', 'curl', '-fsS', 'http://localhost:8003/api/']
+            test: ['CMD', 'curl', '-fsS', 'http://localhost:8001/api/']
             interval: 30s
             timeout: 5s
             retries: 5
